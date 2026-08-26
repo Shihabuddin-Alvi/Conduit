@@ -106,9 +106,40 @@ def apply_strip_vowels(schema):
     
     return new_schema, mapping
 
-# Test strip_vowels
 if __name__ == "__main__":
     schema = base_schema()
     new_schema, mapping = apply_strip_vowels(schema)
     for orig, new in mapping.items():
         print(orig, "->", new)
+
+OPERATORS = {
+    "abbreviate": apply_abbreviations,
+    "strip_vowels": apply_strip_vowels,
+}
+
+def generate_legacy_pair(schema, operators):
+    current_schema = schema
+    combined_mapping = {}
+    
+    for op_name in operators:
+        func = OPERATORS[op_name]
+        current_schema, step_mapping = func(current_schema)
+        
+        for step_orig, step_new in step_mapping.items():
+            found = False
+            for orig_name, current_name in combined_mapping.items():
+                if current_name == step_orig:
+                    combined_mapping[orig_name] = step_new
+                    found = True
+                    break
+            if not found:
+                combined_mapping[step_orig] = step_new
+    
+    return current_schema, combined_mapping
+
+if __name__ == "__main__":
+    schema = base_schema()
+    final_schema, combined_mapping = generate_legacy_pair(schema, ["abbreviate", "strip_vowels"])
+    
+    for orig, final in combined_mapping.items():
+        print(f"{orig:20} -> {final}")
