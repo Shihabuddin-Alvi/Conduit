@@ -6,7 +6,7 @@ from typing import Callable, Any
 @dataclass
 class Column:
     name: str
-    dtype : str
+    dtype: str
     value_generator: Callable[[], Any]
 
 def base_schema():
@@ -32,9 +32,9 @@ def base_schema():
             value_generator=lambda: f"{random.randint(100, 9999)} {random.choice(['Main St', 'Oak Ave', 'Pine Rd', 'Cedar Ln', 'Maple Dr', 'Birch Blvd'])}"
         ),
         Column(
-        name="address_line_2",
-        dtype="str",
-        value_generator=lambda: "" if random.random() < 0.7 else random.choice([f"Apt {random.randint(1, 50)}", f"Suite {random.randint(100, 500)}", f"Unit {random.randint(1, 20)}"])
+            name="address_line_2",
+            dtype="str",
+            value_generator=lambda: "" if random.random() < 0.7 else random.choice([f"Apt {random.randint(1, 50)}", f"Suite {random.randint(100, 500)}", f"Unit {random.randint(1, 20)}"])
         ),
         Column(
             name="created_at",
@@ -53,19 +53,14 @@ def base_schema():
         )
     ]
 
-for col in base_schema():
-    print(col.name, col.dtype, col.value_generator())
-
-
 ABBREVIATIONS = {
-    "address" : "addr",
-    "customer" : "cust",
-    "created" : "crtd",
-    "amount" : "amt",
+    "address": "addr",
+    "customer": "cust",
+    "created": "crtd",
+    "amount": "amt",
     "status": "stat",
     "email": "eml"
-    }
-
+}
 
 def apply_abbreviations(schema):
     new_schema = []
@@ -87,7 +82,33 @@ def apply_abbreviations(schema):
     
     return new_schema, mapping
 
-schema = base_schema()
-new_schema, mapping = apply_abbreviations(schema)
-for orig, new in mapping.items():
-    print(orig, "->", new)
+def apply_strip_vowels(schema):
+    new_schema = []
+    mapping = {}
+    vowels = "aeiou"
+    
+    for col in schema:
+        parts = col.name.split("_")
+        new_parts = []
+        for part in parts:
+            no_vowels = "".join(char for char in part if char.lower() not in vowels)
+            new_parts.append(no_vowels)
+        new_name = "_".join(new_parts).upper()
+        
+        new_col = Column(
+            name=new_name,
+            dtype=col.dtype,
+            value_generator=col.value_generator
+        )
+        
+        new_schema.append(new_col)
+        mapping[col.name] = new_name
+    
+    return new_schema, mapping
+
+# Test strip_vowels
+if __name__ == "__main__":
+    schema = base_schema()
+    new_schema, mapping = apply_strip_vowels(schema)
+    for orig, new in mapping.items():
+        print(orig, "->", new)
