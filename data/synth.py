@@ -143,3 +143,29 @@ if __name__ == "__main__":
     
     for orig, final in combined_mapping.items():
         print(f"{orig:20} -> {final}")
+
+TABLE_CODE = "CUST"
+
+def apply_table_prefix(schema, table_code):
+    new_schema = []
+    mapping = {}
+
+    for col in schema:
+        new_name = f"{table_code}_{col.name}".upper()
+        new_col = Column(
+            name=new_name,
+            dtype=col.dtype,
+            value_generator=col.value_generator
+        )
+
+        new_schema.append(new_col)
+        mapping[col.name] = new_name
+
+    return new_schema, mapping
+
+if __name__ == "__main__":
+    # Test table prefix standalone
+    schema = base_schema()
+    new_schema, mapping = apply_table_prefix(schema, "CUST")
+    for orig, new in mapping.items():
+        print(orig, "->", new)
