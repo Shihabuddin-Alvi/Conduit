@@ -209,8 +209,32 @@ def apply_split_field(schema):
 
     return new_schema, mapping
 
+def apply_merge_fields(schema):
+    new_schema = []
+    mapping = {}
+    merged = set()
+    
+    addr2 = next(c for c in schema if c.name == "address_line_2")
+    
+    for col in schema:
+        if col.name in merged:
+            continue
+        if col.name == "address_line_1":
+            g1, g2 = col.value_generator, addr2.value_generator
+            new_schema.append(Column("STRAS", "str", lambda g1=g1, g2=g2: f"{g1()}, {g2()}"))
+            mapping.update({col.name: "STRAS", addr2.name: "STRAS"})
+            merged.update([col.name, addr2.name])
+        else:
+            new_schema.append(Column(col.name, col.dtype, col.value_generator))
+            mapping[col.name] = col.name
+    
+    return new_schema, mapping
+
 if __name__ == "__main__":
     schema = base_schema()
-    new_schema, mapping = apply_split_field(schema)
+    new_schema, mapping = apply_merge_fields(schema)
     for col in new_schema:
         print(col.name, col.dtype, col.value_generator())
+    print()
+    for orig, new in mapping.items():
+        print(orig, "->", new)
