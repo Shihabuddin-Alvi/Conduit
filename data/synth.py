@@ -163,9 +163,42 @@ def apply_table_prefix(schema, table_code):
 
     return new_schema, mapping
 
+def apply_date_format(schema):
+    new_schema = []
+    mapping = {}
+
+    for col in schema:
+        if col.dtype == "datetime":
+            old_gen = col.value_generator
+            
+            def new_gen():
+                dt = old_gen()
+                return int(dt.strftime("%Y%m%d"))
+            new_col = Column(
+                name=col.name,
+                dtype="int",
+                value_generator=new_gen
+            )
+        else:
+            new_col = Column(
+                name=col.name,
+                dtype=col.dtype,
+                value_generator=col.value_generator
+            )
+
+        new_schema.append(new_col)
+        mapping[col.name] = col.name
+    
+    return new_schema, mapping
+
 if __name__ == "__main__":
-    # Test table prefix standalone
     schema = base_schema()
-    new_schema, mapping = apply_table_prefix(schema, "CUST")
+    new_schema, mapping = apply_date_format(schema)
+
     for orig, new in mapping.items():
         print(orig, "->", new)
+
+    for col in new_schema:
+        if col.name == "created_at":
+            print(f"\ncreated_at dtype: {col.dtype}")
+            print(f"Sample value: {col.value_generator()}")
