@@ -258,8 +258,26 @@ def apply_unit_change(schema):
     
     return new_schema, mapping
 
+def apply_case_flip(schema):
+    new_schema = []
+    mapping = {}
+    
+    for col in schema:
+        new_name = col.name.upper()
+        
+        new_col = Column(
+            name=new_name,
+            dtype=col.dtype,
+            value_generator=col.value_generator
+        )
+        
+        new_schema.append(new_col)
+        mapping[col.name] = new_name
+    
+    return new_schema, mapping
+
 if __name__ == "__main__":
     schema = base_schema()
-    new_schema, mapping = apply_unit_change(schema)
-    for col in new_schema:
-        print(col.name, col.dtype, col.value_generator())
+    new_schema, mapping = apply_case_flip(schema)
+    for orig, new in mapping.items():
+        print(orig, "->", new)
