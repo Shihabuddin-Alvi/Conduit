@@ -191,14 +191,26 @@ def apply_date_format(schema):
     
     return new_schema, mapping
 
+def apply_split_field(schema):
+    new_schema = []
+    mapping = {}
+
+    for col in schema:
+        if col.name == "name":
+            name_gen = col.value_generator
+            new_col1 = Column(name="NAME1", dtype="str", value_generator=lambda gen=name_gen: gen().split()[0])
+            new_col2 = Column(name="NAME2", dtype="str", value_generator=lambda gen=name_gen: gen().split()[-1])
+            new_schema.append(new_col1)
+            new_schema.append(new_col2)
+            mapping["name"] = "NAME1"
+        else:
+            new_schema.append(col)
+            mapping[col.name] = col.name
+
+    return new_schema, mapping
+
 if __name__ == "__main__":
     schema = base_schema()
-    new_schema, mapping = apply_date_format(schema)
-
-    for orig, new in mapping.items():
-        print(orig, "->", new)
-
+    new_schema, mapping = apply_split_field(schema)
     for col in new_schema:
-        if col.name == "created_at":
-            print(f"\ncreated_at dtype: {col.dtype}")
-            print(f"Sample value: {col.value_generator()}")
+        print(col.name, col.dtype, col.value_generator())
