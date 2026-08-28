@@ -230,11 +230,36 @@ def apply_merge_fields(schema):
     
     return new_schema, mapping
 
+def apply_unit_change(schema):
+    new_schema = []
+    mapping = {}
+    
+    for col in schema:
+        if col.name == "amount":
+            old_gen = col.value_generator
+            
+            def new_gen():
+                return int(old_gen() * 100)
+            
+            new_col = Column(
+                name=col.name,
+                dtype="int",
+                value_generator=new_gen
+            )
+        else:
+            new_col = Column(
+                name=col.name,
+                dtype=col.dtype,
+                value_generator=col.value_generator
+            )
+        
+        new_schema.append(new_col)
+        mapping[col.name] = col.name
+    
+    return new_schema, mapping
+
 if __name__ == "__main__":
     schema = base_schema()
-    new_schema, mapping = apply_merge_fields(schema)
+    new_schema, mapping = apply_unit_change(schema)
     for col in new_schema:
         print(col.name, col.dtype, col.value_generator())
-    print()
-    for orig, new in mapping.items():
-        print(orig, "->", new)
