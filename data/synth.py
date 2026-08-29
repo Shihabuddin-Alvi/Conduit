@@ -151,12 +151,15 @@ def apply_date_format(schema):
     
     return new_schema, mapping
 
-def apply_split_field(schema):
+def apply_split_field(schema, original_to_current=None):
+    original_to_current = original_to_current or {}
+    current_name = original_to_current.get("name", "name")
+    
     new_schema = []
     mapping = {}
     
     for col in schema:
-        if col.name == "name":
+        if col.name == current_name:  # Use current_name, not "name"
             name_gen = col.value_generator
             new_col1 = Column(
                 name="NAME1",
@@ -170,30 +173,34 @@ def apply_split_field(schema):
             )
             new_schema.append(new_col1)
             new_schema.append(new_col2)
-            mapping[col.name] = ["NAME1", "NAME2"]
+            mapping["name"] = ["NAME1", "NAME2"]
         else:
             new_schema.append(col)
             mapping[col.name] = col.name
     
     return new_schema, mapping
 
-def apply_merge_fields(schema):
+def apply_merge_fields(schema, original_to_current=None):
+    original_to_current = original_to_current or {}
+    addr1_current = original_to_current.get("address_line_1", "address_line_1")
+    addr2_current = original_to_current.get("address_line_2", "address_line_2")
+    
     new_schema = []
     mapping = {}
     merged = set()
     
-    addr2 = next((c for c in schema if c.name == "address_line_2"), None)
+    addr2 = next((c for c in schema if c.name == addr2_current), None)
     
     for col in schema:
         if col.name in merged:
             continue
-        if col.name == "address_line_1" and addr2:
+        if col.name == addr1_current and addr2:
             g1, g2 = col.value_generator, addr2.value_generator
             new_schema.append(Column(
                 "STRAS", "str",
                 lambda g1=g1, g2=g2: f"{g1()}, {g2()}" if g2() else g1()
             ))
-            mapping.update({col.name: "STRAS", addr2.name: "STRAS"})
+            mapping.update({"address_line_1": "STRAS", "address_line_2": "STRAS"})
             merged.update([col.name, addr2.name])
         else:
             new_schema.append(Column(col.name, col.dtype, col.value_generator))
@@ -258,44 +265,46 @@ OPERATORS = {
 
 def generate_legacy_pair(schema, operators):
     current_schema = schema
-    ground_truth = []  # list of (original, final) tuples
+    original_names = [col.name for col in schema]
     
     for op_name in operators:
         func = OPERATORS[op_name]
-        current_schema, step_mapping = func(current_schema)
-        
-        # step_mapping can be dict or list of tuples (for split_field)
-        if isinstance(step_mapping, dict):
-            for orig, new in step_mapping.items():
-                if isinstance(new, list):
-                    # One-to-many: add multiple tuples
-                    for target in new:
-                        ground_truth.append((orig, target))
-                else:
-                    # Many-to-one or one-to-one
-                    found = False
-                    for idx, (src, tgt) in enumerate(ground_truth):
-                        if tgt == orig:
-                            ground_truth[idx] = (src, new)
-                            found = True
-                            break
-                    if not found:
-                        ground_truth.append((orig, new))
+        if op_name in ["split_field", "merge_fields"]:
+            current_schema, _ = func(current_schema, {col.name: col.name for col in current_schema})
         else:
-            # step_mapping is already a list of tuples
-            for orig, new in step_mapping:
-                if isinstance(new, list):
-                    for target in new:
-                        ground_truth.append((orig, target))
-                else:
-                    found = False
-                    for idx, (src, tgt) in enumerate(ground_truth):
-                        if tgt == orig:
-                            ground_truth[idx] = (src, new)
-                            found = True
-                            break
-                    if not found:
-                        ground_truth.append((orig, new))
+            current_schema, _ = func(current_schema)
+    
+    # Build ground truth: map original column names to final column names
+    # Based on what the operators do
+    ground_truth = []
+    final_names = {col.name for col in current_schema}
+    
+    # Manually encode the mappings based on operators
+    if "split_field" in operators:
+        ground_truth.extend([("name", "NAME1"), ("name", "NAME2")])
+    if "merge_fields" in operators:
+        ground_truth.extend([("address_line_1", "STRAS"), ("address_line_2", "STRAS")])
+    
+    # For other columns, build the expected final name
+    for orig in original_names:
+        if orig in ["name", "address_line_1", "address_line_2"]:
+            continue  # Already handled
+        # Trace the transformations
+        final = orig
+        if "abbreviate" in operators:
+            parts = final.split("_")
+            new_parts = [ABBREVIATIONS.get(part, part) for part in parts]
+            final = "_".join(new_parts)
+        if "strip_vowels" in operators:
+            parts = final.split("_")
+            new_parts = ["".join(c for c in part if c.lower() not in "aeiou") for part in parts]
+            final = "_".join(new_parts)
+        if "table_prefix" in operators:
+            final = f"CUST_{final}"
+        if "case_flip" in operators:
+            final = final.upper()
+        
+        ground_truth.append((orig, final))
     
     return current_schema, ground_truth
 
