@@ -159,7 +159,7 @@ def apply_split_field(schema, original_to_current=None):
     mapping = {}
     
     for col in schema:
-        if col.name == current_name:  # Use current_name, not "name"
+        if col.name == current_name:
             name_gen = col.value_generator
             new_col1 = Column(
                 name="NAME1",
@@ -271,6 +271,11 @@ def generate_legacy_pair(schema, operators):
         func = OPERATORS[op_name]
         current_schema, step_mapping = func(current_schema)
         
+        if op_name == "unit_change":
+            for c in current_schema:
+                if "amount" in c.name.lower() or "amt" in c.name.lower() or "mt" == c.name.lower():
+                    print(f"DEBUG after unit_change: {c.name} dtype={c.dtype}")
+        
         # Convert step_mapping to a list of (orig, new) pairs
         pairs = []
         if isinstance(step_mapping, dict):
@@ -295,11 +300,77 @@ def generate_legacy_pair(schema, operators):
     
     return current_schema, ground_truth
 
+def apply_add_junk(schema):
+    new_schema = list(schema)
+    mapping = {col.name: col.name for col in schema}
+
+    junk_cols = [
+        Column(
+            name="LEGACY_FLAG",
+            dtype="int",
+            value_generator=lambda: random.randint(0, 1),
+        ),
+        Column(
+            name="INTERNAL_CODE",
+            dtype="str",
+            value_generator=lambda: random.choice(
+                ["A102", "B205", "C307", "X999"]
+            ),
+        ),
+        Column(
+            name="MIGRATION_BATCH",
+            dtype="str",
+            value_generator=lambda: random.choice(
+                ["batch_01", "batch_02", "batch_03"]
+            ),
+        ),
+    ]
+
+    new_schema.extend(junk_cols)
+
+    return new_schema, mapping
+
+def apply_drop_column(schema):
+    new_schema = []
+    mapping = {}
+    
+    cols_to_drop = ["status"]
+
+    for col in schema:
+        if col.name not in cols_to_drop:
+            new_schema.append(col)
+            mapping[col.name] = col.name
+
+    return new_schema, mapping
+
 if __name__ == "__main__":
-    schema = base_schema()
-    final_schema, ground_truth = generate_legacy_pair(
-        schema,
-        ["split_field", "merge_fields", "abbreviate", "strip_vowels", "table_prefix", "date_format", "unit_change", "case_flip"]
-    )
+    clean_schema = base_schema()
+    
+    # Drop status before any renaming happens
+    clean_schema, _ = apply_drop_column(clean_schema)
+    
+    operators_list = ["split_field", "merge_fields", "unit_change", "date_format", 
+                      "abbreviate", "strip_vowels", "table_prefix", "case_flip"]
+    
+    final_schema, ground_truth = generate_legacy_pair(clean_schema, operators_list)
+    
+    before_names = {c.name for c in final_schema}
+    
+    final_schema, _ = apply_add_junk(final_schema)
+    
+    new_names = [c.name for c in final_schema if c.name not in before_names]
+    for name in new_names:
+        ground_truth.append((None, name))
+    
+    print("FINAL SCHEMA:")
+    for col in final_schema:
+        print(f"  {col.name} ({col.dtype})")
+    
+    print("\nGROUND TRUTH:")
     for orig, final in ground_truth:
-        print(f"{orig:20} -> {final}")
+        print(f"  {orig} -> {final}")
+    
+    print("\nSAMPLE ROWS:")
+    for i in range(5):
+        row = {col.name: col.value_generator() for col in final_schema}
+        print(f"  Row {i+1}: {row}")
