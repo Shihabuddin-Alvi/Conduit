@@ -276,8 +276,41 @@ def apply_case_flip(schema):
     
     return new_schema, mapping
 
+
+def apply_add_junk(schema):
+    new_schema = list(schema)
+    mapping = {col.name: col.name for col in schema}
+
+    junk_cols = [
+        Column(
+            name="LEGACY_FLAG",
+            dtype="int",
+            value_generator=lambda: random.randint(0, 1),
+        ),
+        Column(
+            name="INTERNAL_CODE",
+            dtype="str",
+            value_generator=lambda: random.choice(
+                ["A102", "B205", "C307", "X999"]
+            ),
+        ),
+        Column(
+            name="MIGRATION_BATCH",
+            dtype="str",
+            value_generator=lambda: random.choice(
+                ["batch_01", "batch_02", "batch_03"]
+            ),
+        ),
+    ]
+
+    new_schema.extend(junk_cols)
+
+    return new_schema, mapping
+
 if __name__ == "__main__":
     schema = base_schema()
-    new_schema, mapping = apply_case_flip(schema)
+    new_schema, mapping = apply_add_junk(schema)
+    print("Schema columns:", [c.name for c in new_schema])
+    print("Mapping entries:", len(mapping))
     for orig, new in mapping.items():
         print(orig, "->", new)
