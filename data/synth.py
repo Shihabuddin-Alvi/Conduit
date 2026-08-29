@@ -265,28 +265,41 @@ OPERATORS = {
 
 def generate_legacy_pair(schema, operators):
     current_schema = schema
-    combined_mapping = {}
+    ground_truth = []  # list of (orig, final) pairs
     
     for op_name in operators:
         func = OPERATORS[op_name]
         current_schema, step_mapping = func(current_schema)
         
-        for step_orig, step_new in step_mapping.items():
+        # Convert step_mapping to a list of (orig, new) pairs
+        pairs = []
+        if isinstance(step_mapping, dict):
+            for orig, new in step_mapping.items():
+                if isinstance(new, list):
+                    for target in new:
+                        pairs.append((orig, target))
+                else:
+                    pairs.append((orig, new))
+        else:
+            pairs = step_mapping
+        
+        # Merge pairs into ground_truth
+        for step_orig, step_new in pairs:
             found = False
-            for orig_name, current_name in combined_mapping.items():
-                if current_name == step_orig:
-                    combined_mapping[orig_name] = step_new
+            for idx, (orig, current) in enumerate(ground_truth):
+                if current == step_orig:
+                    ground_truth[idx] = (orig, step_new)
                     found = True
-                    break
             if not found:
-                combined_mapping[step_orig] = step_new
+                ground_truth.append((step_orig, step_new))
     
-    return current_schema, combined_mapping
+    return current_schema, ground_truth
 
 if __name__ == "__main__":
     schema = base_schema()
-    final_schema, combined_mapping = generate_legacy_pair(
-        schema, ["abbreviate", "strip_vowels", "table_prefix", "date_format", "unit_change", "case_flip"]
+    final_schema, ground_truth = generate_legacy_pair(
+        schema,
+        ["split_field", "merge_fields", "abbreviate", "strip_vowels", "table_prefix", "date_format", "unit_change", "case_flip"]
     )
-    for orig, final in combined_mapping.items():
+    for orig, final in ground_truth:
         print(f"{orig:20} -> {final}")
