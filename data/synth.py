@@ -307,9 +307,24 @@ def apply_add_junk(schema):
 
     return new_schema, mapping
 
+
+def apply_drop_column(schema):
+    new_schema = []
+    mapping = {}
+    
+    cols_to_drop = ["status"]
+
+    for col in schema:
+        if col.name not in cols_to_drop:
+            new_schema.append(col)
+            mapping[col.name] = col.name
+
+    return new_schema, mapping
+
+
 if __name__ == "__main__":
     schema = base_schema()
-    new_schema, mapping = apply_add_junk(schema)
+    new_schema, mapping = apply_drop_column(schema)
     print("Schema columns:", [c.name for c in new_schema])
     print("Mapping entries:", len(mapping))
     for orig, new in mapping.items():
