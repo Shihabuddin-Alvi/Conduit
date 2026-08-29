@@ -265,222 +265,28 @@ OPERATORS = {
 
 def generate_legacy_pair(schema, operators):
     current_schema = schema
-    original_names = [col.name for col in schema]
+    combined_mapping = {}
     
     for op_name in operators:
         func = OPERATORS[op_name]
-        if op_name in ["split_field", "merge_fields"]:
-            current_schema, _ = func(current_schema, {col.name: col.name for col in current_schema})
-        else:
-            current_schema, _ = func(current_schema)
-    
-    # Build ground truth: map original column names to final column names
-    # Based on what the operators do
-    ground_truth = []
-    final_names = {col.name for col in current_schema}
-    
-    # Manually encode the mappings based on operators
-    if "split_field" in operators:
-        ground_truth.extend([("name", "NAME1"), ("name", "NAME2")])
-    if "merge_fields" in operators:
-        ground_truth.extend([("address_line_1", "STRAS"), ("address_line_2", "STRAS")])
-    
-    # For other columns, build the expected final name
-    for orig in original_names:
-        if orig in ["name", "address_line_1", "address_line_2"]:
-            continue  # Already handled
-        # Trace the transformations
-        final = orig
-        if "abbreviate" in operators:
-            parts = final.split("_")
-            new_parts = [ABBREVIATIONS.get(part, part) for part in parts]
-            final = "_".join(new_parts)
-        if "strip_vowels" in operators:
-            parts = final.split("_")
-            new_parts = ["".join(c for c in part if c.lower() not in "aeiou") for part in parts]
-            final = "_".join(new_parts)
-        if "table_prefix" in operators:
-            final = f"CUST_{final}"
-        if "case_flip" in operators:
-            final = final.upper()
+        current_schema, step_mapping = func(current_schema)
         
-        ground_truth.append((orig, final))
+        for step_orig, step_new in step_mapping.items():
+            found = False
+            for orig_name, current_name in combined_mapping.items():
+                if current_name == step_orig:
+                    combined_mapping[orig_name] = step_new
+                    found = True
+                    break
+            if not found:
+                combined_mapping[step_orig] = step_new
     
-    return current_schema, ground_truth
-
-def apply_structural_changes(schema, ground_truth, add_junk_count=3, drop_columns=None):
-    new_schema = list(schema)
-    new_ground_truth = list(ground_truth)
-    
-    if drop_columns is None:
-        drop_columns = ["status"]
-    
-    # Drop columns from schema and ground_truth
-    for col_name in drop_columns:
-        new_schema = [c for c in new_schema if c.name != col_name]
-        new_ground_truth = [(src, tgt) for src, tgt in new_ground_truth if src != col_name and tgt != col_name]
-    
-    # Add junk columns
-    junk_names = ["LEGACY_FLAG", "INTERNAL_CODE", "MIGRATION_BATCH"]
-    junk_generators = [
-        lambda: random.randint(0, 1),
-        lambda: random.choice(["A102", "B205", "C307", "X999"]),
-        lambda: random.choice(["batch_01", "batch_02", "batch_03"])
-    ]
-    
-    for i in range(add_junk_count):
-        junk_col = Column(
-            name=junk_names[i] if i < len(junk_names) else f"JUNK_{i}",
-            dtype="str" if i > 0 else "int",
-            value_generator=junk_generators[i] if i < len(junk_generators) else lambda: "junk"
-        )
-        new_schema.append(junk_col)
-        new_ground_truth.append((None, junk_col.name))
-    
-    return new_schema, new_ground_truth
-
-def apply_operators_to_values(clean_values, operators_list):
-    legacy_values = []
-    
-    for row in clean_values:
-        legacy_row = dict(row)
-        key_mapping = {k: k for k in row.keys()}
-        
-        for op_name in operators_list:
-            if op_name == "abbreviate":
-                new_row = {}
-                new_mapping = {}
-                for col_name, val in legacy_row.items():
-                    parts = col_name.split("_")
-                    new_parts = [ABBREVIATIONS.get(part, part) for part in parts]
-                    new_name = "_".join(new_parts).upper()
-                    new_row[new_name] = val
-                    for orig, current in key_mapping.items():
-                        if current == col_name:
-                            new_mapping[orig] = new_name
-                            break
-                legacy_row = new_row
-                key_mapping = new_mapping
-            
-            elif op_name == "strip_vowels":
-                vowels = "aeiou"
-                new_row = {}
-                new_mapping = {}
-                for col_name, val in legacy_row.items():
-                    parts = col_name.split("_")
-                    new_parts = ["".join(c for c in part if c.lower() not in vowels) for part in parts]
-                    new_name = "_".join(new_parts).upper()
-                    new_row[new_name] = val
-                    for orig, current in key_mapping.items():
-                        if current == col_name:
-                            new_mapping[orig] = new_name
-                            break
-                legacy_row = new_row
-                key_mapping = new_mapping
-            
-            elif op_name == "table_prefix":
-                new_row = {}
-                new_mapping = {}
-                for col_name, val in legacy_row.items():
-                    new_name = f"CUST_{col_name}".upper()
-                    new_row[new_name] = val
-                    for orig, current in key_mapping.items():
-                        if current == col_name:
-                            new_mapping[orig] = new_name
-                            break
-                legacy_row = new_row
-                key_mapping = new_mapping
-            
-            elif op_name == "date_format":
-                current_name = key_mapping.get("created_at", "created_at")
-                if current_name in legacy_row:
-                    dt = legacy_row[current_name]
-                    if isinstance(dt, datetime):
-                        legacy_row[current_name] = int(dt.strftime("%Y%m%d"))
-            
-            elif op_name == "split_field":
-                current_name = key_mapping.get("name", "name")
-                if current_name in legacy_row:
-                    name_parts = legacy_row[current_name].split()
-                    legacy_row["NAME1"] = name_parts[0] if len(name_parts) > 0 else ""
-                    legacy_row["NAME2"] = name_parts[-1] if len(name_parts) > 1 else ""
-                    del legacy_row[current_name]
-                    key_mapping.pop("name", None)
-                    key_mapping["NAME1"] = "NAME1"
-                    key_mapping["NAME2"] = "NAME2"
-            
-            elif op_name == "merge_fields":
-                addr1_key = key_mapping.get("address_line_1", "address_line_1")
-                addr2_key = key_mapping.get("address_line_2", "address_line_2")
-                if addr1_key in legacy_row:
-                    addr1 = legacy_row.get(addr1_key, "")
-                    addr2 = legacy_row.get(addr2_key, "")
-                    legacy_row["STRAS"] = f"{addr1}, {addr2}" if addr2 else addr1
-                    del legacy_row[addr1_key]
-                    if addr2_key in legacy_row:
-                        del legacy_row[addr2_key]
-                    key_mapping.pop("address_line_1", None)
-                    key_mapping.pop("address_line_2", None)
-                    key_mapping["STRAS"] = "STRAS"
-            
-            elif op_name == "unit_change":
-                current_name = key_mapping.get("amount", "amount")
-                if current_name in legacy_row:
-                    legacy_row[current_name] = int(legacy_row[current_name] * 100)
-            
-            elif op_name == "case_flip":
-                new_row = {}
-                new_mapping = {}
-                for col_name, val in legacy_row.items():
-                    new_name = col_name.upper()
-                    new_row[new_name] = val
-                    for orig, current in key_mapping.items():
-                        if current == col_name:
-                            new_mapping[orig] = new_name
-                            break
-                legacy_row = new_row
-                key_mapping = new_mapping
-        
-        legacy_values.append(legacy_row)
-    
-    return legacy_values
+    return current_schema, combined_mapping
 
 if __name__ == "__main__":
-    # Generate clean schema and data
-    clean_schema = base_schema()
-    
-    # Generate clean values for 10 rows
-    clean_values = []
-    for _ in range(10):
-        row = {col.name: col.value_generator() for col in clean_schema}
-        clean_values.append(row)
-    
-    # Apply all operators to get legacy schema and ground truth
-    operators_list = ["abbreviate", "strip_vowels", "table_prefix", "date_format", 
-                      "split_field", "merge_fields", "unit_change", "case_flip"]
-    legacy_schema, ground_truth = generate_legacy_pair(clean_schema, operators_list)
-    
-    # Apply structural changes (add junk, drop columns)
-    legacy_schema, ground_truth = apply_structural_changes(
-        legacy_schema, ground_truth, add_junk_count=3, drop_columns=["status"]
+    schema = base_schema()
+    final_schema, combined_mapping = generate_legacy_pair(
+        schema, ["abbreviate", "strip_vowels", "table_prefix", "date_format", "unit_change", "case_flip"]
     )
-    
-    # Transform values
-    legacy_values = apply_operators_to_values(clean_values, operators_list)
-    
-    # Print results
-    print("SOURCE COLUMNS (clean):")
-    for col in clean_schema:
-        print(f"  {col.name} ({col.dtype})")
-    
-    print("\nTARGET COLUMNS (legacy):")
-    for col in legacy_schema:
-        print(f"  {col.name} ({col.dtype})")
-    
-    print("\nGROUND TRUTH (clean -> legacy):")
-    for src, tgt in ground_truth:
-        print(f"  {src} -> {tgt}")
-    
-    print("\nDATA (first 10 rows):")
-    for i, row in enumerate(legacy_values[:10]):
-        print(f"  Row {i+1}: {row}")
+    for orig, final in combined_mapping.items():
+        print(f"{orig:20} -> {final}")
