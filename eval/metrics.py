@@ -40,6 +40,18 @@ def compute_metrics(counts: dict) -> dict:
 
     return {"precision": precision, "recall": recall, "f1": f1}
 
+def compute_rank_metrics(counts: dict) -> dict:
+    ranks = counts["ranks"]
+    if not ranks:
+        return {"mrr": 0.0, "recall_at_3": 0.0}
+
+    reciprocal_ranks = [1 / r if r is not None else 0.0 for r in ranks]
+    mrr = sum(reciprocal_ranks) / len(ranks)
+
+    hits_at_3 = sum(1 for r in ranks if r is not None and r <= 3)
+    recall_at_3 = hits_at_3 / len(ranks)
+
+    return {"mrr": mrr, "recall_at_3": recall_at_3}
 
 if __name__ == "__main__":
     all_cols = ["a", "b", "c", "d"]
