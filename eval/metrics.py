@@ -1,3 +1,7 @@
+import json
+from pathlib import Path
+
+
 def score_predictions(preds: dict, truth: dict, all_src_cols: list) -> dict:
     tp = fp = fn = tn = 0
     ranks = []
@@ -55,6 +59,7 @@ def compute_rank_metrics(counts: dict) -> dict:
 
     return {"mrr": mrr, "recall_at_3": recall_at_3}
 
+
 def coverage_and_precision(preds: dict, truth: dict, all_src_cols: list, threshold: float) -> dict:
     above_threshold = []
     correct_above = 0
@@ -74,6 +79,39 @@ def coverage_and_precision(preds: dict, truth: dict, all_src_cols: list, thresho
     precision = correct_above / len(above_threshold) if above_threshold else 0.0
 
     return {"coverage": coverage, "precision_at_coverage": precision}
+
+
+def aggregate(rows: list) -> dict:
+    total = {"tp": 0, "fp": 0, "fn": 0, "tn": 0, "ranks": []}
+    for row in rows:
+        total["tp"] += row["tp"]
+        total["fp"] += row["fp"]
+        total["fn"] += row["fn"]
+        total["tn"] += row["tn"]
+        total["ranks"].extend(row["ranks"])
+
+    metrics = compute_metrics(total)
+    rank_metrics = compute_rank_metrics(total)
+
+    return {**total, **metrics, **rank_metrics}
+
+
+def run_eval(matcher_fn, dataset_iter, name: str, all_src_cols: list) -> dict:
+    rows = []
+    for src, tgt, truth, meta in dataset_iter:
+        preds = matcher_fn(src, tgt)
+        rows.append(score_predictions(preds, truth, all_src_cols))
+    
+    report = aggregate(rows)
+    
+    # Write report
+    report_path = Path(f"eval/reports/{name}.json")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(report_path, "w") as f:
+        json.dump(report, f, indent=2)
+    
+    return report
+
 
 if __name__ == "__main__":
     all_cols = ["a", "b", "c", "d"]
