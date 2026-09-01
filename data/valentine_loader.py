@@ -70,6 +70,10 @@ def get_dataset_iter(
         yield source_df, target_df, truth, all_src_cols
 
 if __name__ == "__main__":
+    all_pairs = list_pairs("TPC-DI", "Unionable")
+    ev_pairs = list_pairs("TPC-DI", "Unionable", noise_level="ev")
+    print(len(all_pairs), len(ev_pairs))
+
     it = get_dataset_iter("TPC-DI", "Unionable", noise_level="ev")
     src, tgt, truth, all_src_cols = next(it)
     print(len(truth), len(all_src_cols))
