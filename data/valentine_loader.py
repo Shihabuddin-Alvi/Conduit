@@ -37,3 +37,21 @@ def load_pair(pair_dir: Path) -> tuple:
     ]
 
     return source_df, target_df, ground_truth_pairs
+
+def load_dataset(
+    dataset: str,
+    scenario: str,
+    noise_level: Optional[str] = None,
+):
+    for pair_dir in list_pairs(dataset, scenario, noise_level):
+        source_df, target_df, ground_truth_pairs = load_pair(pair_dir)
+
+        metadata = {
+            "dataset": dataset,
+            "scenario": scenario,
+            "pair_name": pair_dir.name,
+            "n_source_cols": len(source_df.columns),
+            "n_target_cols": len(target_df.columns),
+        }
+
+        yield source_df, target_df, ground_truth_pairs, metadata
