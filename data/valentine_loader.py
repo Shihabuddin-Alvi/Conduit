@@ -55,3 +55,21 @@ def load_dataset(
         }
 
         yield source_df, target_df, ground_truth_pairs, metadata
+
+def get_dataset_iter(
+    dataset: str,
+    scenario: str,
+    noise_level: Optional[str] = None,
+):
+    for source_df, target_df, ground_truth_pairs, metadata in load_dataset(
+        dataset, scenario, noise_level
+    ):
+        truth = {src: tgt for src, tgt in ground_truth_pairs}
+        all_src_cols = list(source_df.columns)
+
+        yield source_df, target_df, truth, all_src_cols
+
+if __name__ == "__main__":
+    it = get_dataset_iter("TPC-DI", "Unionable", noise_level="ev")
+    src, tgt, truth, all_src_cols = next(it)
+    print(len(truth), len(all_src_cols))
