@@ -4,8 +4,8 @@ from eval.baselines import exact_match
 
 if __name__ == "__main__":
     report = run_eval(
-        exact_match, 
-        get_dataset_iter("TPC-DI", "Unionable"), 
-        "exact_match_smoke"
+        exact_match,
+        get_dataset_iter("TPC-DI", "Unionable", noise_level="ev"),
+        "exact_match_smoke",
     )
     print(report)
