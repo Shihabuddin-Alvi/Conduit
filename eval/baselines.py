@@ -89,3 +89,35 @@ def jaccard_trigram_match(src: pd.DataFrame, tgt: pd.DataFrame, top_k: int = 5) 
         result[src_col] = scores[:top_k]
     
     return result
+
+def levenshtein_ratio_match(src: pd.DataFrame, tgt: pd.DataFrame, top_k: int = 5) -> dict[str, list[tuple[str, float]]]:
+    """
+    String similarity using difflib.SequenceMatcher.ratio().
+    
+    NOTE: This is Ratcliff-Obershelp similarity (gestalt pattern matching),
+    NOT true Levenshtein edit distance. It approximates similarity but differs
+    from true edit distance in how it finds matching substrings.
+    
+    Uses lowercase strings for case-insensitive matching.
+    Returns top-k target columns sorted descending by score for each source column.
+    Like Jaccard, this baseline never abstains — every source column gets top_k
+    candidates even if scores are low, exposing the matcher's inability to detect
+    "no signal".
+    """
+    from difflib import SequenceMatcher
+    
+    src_cols = list(src.columns)
+    tgt_cols = list(tgt.columns)
+    
+    result = {}
+    for src_col in src_cols:
+        scores = []
+        src_lower = src_col.lower()
+        for tgt_col in tgt_cols:
+            ratio = SequenceMatcher(None, src_lower, tgt_col.lower()).ratio()
+            scores.append((tgt_col, ratio))
+        
+        scores.sort(key=lambda x: x[1], reverse=True)
+        result[src_col] = scores[:top_k]
+    
+    return result
