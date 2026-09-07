@@ -1,20 +1,15 @@
-Schema matching means figuring out where each column from an old database should go in a new cloud database during a migration.
-For enterprises, this can be a major bottleneck, as consultants often have to manually map 300 to 2,000 columns in spreadsheets, which can take 2 to 12 person-weeks.
-Conduit makes this process faster by suggesting the most likely matches, automatically accepting high-confidence matches, and sending the uncertain ones to a human for review.
+Conduit automates schema mapping during database migrations. Legacy-to-cloud migrations require mapping hundreds or thousands of columns from old systems to new cloud targets, a process that typically takes 2 to 12 person-weeks of manual work in spreadsheets.
 
+Conduit generates ranked match candidates for every source column, automatically accepts high-confidence mappings, and routes uncertain ones to a human reviewer for final decision, cutting the manual workload significantly.
 
-## Session 5 — Trivial baselines (TPC-DI, Unionable, noisy)
+Session 5 tested Conduit against four string-matching baselines on TPC-DI:
 
-| Baseline | Precision | Recall | F1 | Abstains? |
-|---|---|---|---|---|
-| Exact match | 1.0 | 0.167 | 0.286 | Yes |
-| Normalized match | 1.0 | 0.167 | 0.286 | Yes |
-| Jaccard trigram | 1.0 | 0.646 | 0.785 | No |
-| Levenshtein ratio | 1.0 | 0.871 | 0.931 | No |
+Baseline	Precision	Recall	F1	Abstains?
+Exact match	1.0	0.167	0.286	Yes
+Normalized match	1.0	0.167	0.286	Yes
+Jaccard trigram	1.0	0.646	0.785	No
+Levenshtein ratio	1.0	0.871	0.931	No
 
-**Caveat:** this dataset has zero unmapped source columns, every source column has a correct target. Precision 1.0 across all four baselines reflects that property of the data, not matcher quality. Jaccard and Levenshtein never abstain, they always return top-k candidates even at low scores; on a dataset with junk columns this would show up as false positives, but it can't here because there are none to guess wrong on.
+Dataset caveat: TPC-DI contains zero unmapped columns; every source column has a correct target. The 1.0 precision across all baselines reflects this property, not matcher quality. Jaccard and Levenshtein never abstain and return top-k candidates regardless of score. On real data with junk columns, this would surface as false positives, which cannot occur here.
 
-**Known limitations:**
-- Jaccard trigram scores 0.0 for any column name under 3 characters, including against its own exact match, since trigram sets need length ≥3 to have signal.
-- Levenshtein ratio here is difflib's Ratcliff-Obershelp similarity, not true edit distance. Chosen to avoid a new dependency; documented in code.
-- Normalized match strips case and underscores only, it does not remove substrings like table-name prefixes, so it performs identically to exact match on TPC-DI's `prospect_` corruption.
+Known limitations: Jaccard trigram scores 0.0 for column names under 3 characters, including exact matches. Levenshtein uses Ratcliff-Obershelp similarity rather than true edit distance to avoid adding a dependency. Normalized match strips only case and underscores, leaving table-name prefixes intact, so it performs identically to exact match on TPC-DI's corrupted prospect_ prefix.
