@@ -152,9 +152,8 @@ def apply_date_format(schema, original_to_current=None):
     return new_schema, mapping
 
 def apply_split_field(schema, original_to_current=None):
-    # Determine current name for the original "name" column
     current_names = original_to_current.get("name", ["name"]) if original_to_current else ["name"]
-    current_name = current_names[0]  # assume only one current name
+    current_name = current_names[0]
     
     new_schema = []
     mapping = {}
@@ -182,7 +181,6 @@ def apply_split_field(schema, original_to_current=None):
             )
             new_schema.append(new_col1)
             new_schema.append(new_col2)
-            # Map the current name (the one being split) to the two new names
             mapping[col.name] = ["NAME1", "NAME2"]
         else:
             new_schema.append(col)
@@ -191,7 +189,6 @@ def apply_split_field(schema, original_to_current=None):
     return new_schema, mapping
 
 def apply_merge_fields(schema, original_to_current=None):
-    # Determine current names for the original address columns
     if original_to_current:
         addr1_current = original_to_current.get("address_line_1", ["address_line_1"])[0]
         addr2_current = original_to_current.get("address_line_2", ["address_line_2"])[0]
@@ -301,7 +298,6 @@ def apply_add_junk(schema, original_to_current=None):
     ]
 
     new_schema.extend(junk_cols)
-    # Map None to all junk column names (they have no original)
     mapping[None] = [col.name for col in junk_cols]
 
     return new_schema, mapping
@@ -334,15 +330,13 @@ OPERATORS = {
 
 def generate_legacy_pair(schema, operators):
     current_schema = schema
-    # Map original column names to list of current names
     original_to_current = {col.name: [col.name] for col in schema}
-    junk_entries = []  # (None, current_name) for junk columns
+    junk_entries = []
 
     for op_name in operators:
         func = OPERATORS[op_name]
         current_schema, step_mapping = func(current_schema, original_to_current)
 
-        # Rebuild original_to_current using step_mapping
         new_original_to_current = {}
         for orig, current_names in original_to_current.items():
             new_names = []
@@ -353,11 +347,9 @@ def generate_legacy_pair(schema, operators):
                         new_names.extend(val)
                     else:
                         new_names.append(val)
-                # else: column was dropped (not in step_mapping)
             if new_names:
                 new_original_to_current[orig] = new_names
 
-        # Handle junk columns (origin None)
         if None in step_mapping:
             junk_names = step_mapping[None]
             if isinstance(junk_names, list):
@@ -368,7 +360,6 @@ def generate_legacy_pair(schema, operators):
 
         original_to_current = new_original_to_current
 
-    # Build final ground truth
     ground_truth = []
     for orig, names in original_to_current.items():
         for name in names:
@@ -379,8 +370,10 @@ def generate_legacy_pair(schema, operators):
 if __name__ == "__main__":
     clean_schema = base_schema()
     
+    # Reordered: case_flip before split_field to prove the fix
     operators_list = [
         "drop_column",
+        "case_flip",          # now before split_field
         "split_field",
         "merge_fields",
         "unit_change",
@@ -388,7 +381,6 @@ if __name__ == "__main__":
         "abbreviate",
         "strip_vowels",
         "table_prefix",
-        "case_flip",
         "add_junk"
     ]
     
@@ -403,7 +395,7 @@ if __name__ == "__main__":
 
     print("\nGROUND TRUTH:")
     for orig, final in ground_truth:
-        print(f"  {orig!r} -> {final!r}")   # repr makes case visible
+        print(f"  {orig!r} -> {final!r}")
 
     print("\nSAMPLE ROWS:")
     for i in range(5):
