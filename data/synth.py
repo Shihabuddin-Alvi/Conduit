@@ -402,15 +402,18 @@ if __name__ == "__main__":
     
     final_schema, ground_truth = generate_legacy_pair(clean_schema, operators_list)
     
-    print("FINAL SCHEMA:")
-    for col in final_schema:
-        print(f"  {col.name} ({col.dtype})")
-    
-    print("\nGROUND TRUTH:")
-    for orig, final in ground_truth:
-        print(f"  {orig} -> {final}")
-    
-    print("\nSAMPLE ROWS:")
-    for i in range(5):
-        row = {col.name: col.value_generator() for col in final_schema}
-        print(f"  Row {i+1}: {row}")
+print("FINAL SCHEMA:")
+for col in final_schema:
+    print(f"  {col.name} ({col.dtype})")
+
+print("\nSOURCE SCHEMA (original):", [c.name for c in clean_schema])
+print("TARGET SCHEMA (final):", [c.name for c in final_schema])
+
+print("\nGROUND TRUTH:")
+for orig, final in ground_truth:
+    print(f"  {orig} -> {final}")
+
+print("\nSAMPLE ROWS:")
+for i in range(5):
+    row = {col.name: col.value_generator() for col in final_schema}
+    print(f"  Row {i+1}: {row}")
