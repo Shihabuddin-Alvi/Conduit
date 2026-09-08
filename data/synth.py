@@ -1,7 +1,7 @@
 import random
 from datetime import datetime, timedelta
 from dataclasses import dataclass
-from typing import Callable, Any, Dict, List, Optional
+from typing import Callable, Any
 
 @dataclass
 class Column:
@@ -334,54 +334,46 @@ OPERATORS = {
 
 def generate_legacy_pair(schema, operators):
     current_schema = schema
-    ground_truth = []  # list of (orig, final) pairs
-    
-    # Maintain mapping from original column names to list of current names
+    # Map original column names to list of current names
     original_to_current = {col.name: [col.name] for col in schema}
-    
+    junk_entries = []  # (None, current_name) for junk columns
+
     for op_name in operators:
         func = OPERATORS[op_name]
-        # Pass original_to_current to operators that need it
         current_schema, step_mapping = func(current_schema, original_to_current)
-        
-        # Convert step_mapping to a list of (orig, new) pairs
-        pairs = []
-        if isinstance(step_mapping, dict):
-            for orig, new in step_mapping.items():
-                if isinstance(new, list):
-                    for target in new:
-                        pairs.append((orig, target))
-                else:
-                    pairs.append((orig, new))
-        else:
-            pairs = step_mapping
-        
-        # Merge pairs into ground_truth
-        for step_orig, step_new in pairs:
-            found = False
-            for idx, (orig, current) in enumerate(ground_truth):
-                if current == step_orig:
-                    ground_truth[idx] = (orig, step_new)
-                    found = True
-            if not found:
-                ground_truth.append((step_orig, step_new))
-        
-        # Update original_to_current based on step_mapping
-        # Only consider keys that are actual column names (not None)
-        for old_name, new_names in step_mapping.items():
-            if old_name is None:
-                continue
-            # Convert new_names to list for uniform handling
-            if not isinstance(new_names, list):
-                new_names = [new_names]
-            # Update each original that currently maps to old_name
-            for orig, current_list in original_to_current.items():
-                if old_name in current_list:
-                    # Replace old_name with the new names
-                    idx = current_list.index(old_name)
-                    current_list[idx:idx+1] = new_names
-                    # Remove duplicates if any (not necessary)
-    
+
+        # Rebuild original_to_current using step_mapping
+        new_original_to_current = {}
+        for orig, current_names in original_to_current.items():
+            new_names = []
+            for cur in current_names:
+                if cur in step_mapping:
+                    val = step_mapping[cur]
+                    if isinstance(val, list):
+                        new_names.extend(val)
+                    else:
+                        new_names.append(val)
+                # else: column was dropped (not in step_mapping)
+            if new_names:
+                new_original_to_current[orig] = new_names
+
+        # Handle junk columns (origin None)
+        if None in step_mapping:
+            junk_names = step_mapping[None]
+            if isinstance(junk_names, list):
+                for name in junk_names:
+                    junk_entries.append((None, name))
+            else:
+                junk_entries.append((None, junk_names))
+
+        original_to_current = new_original_to_current
+
+    # Build final ground truth
+    ground_truth = []
+    for orig, names in original_to_current.items():
+        for name in names:
+            ground_truth.append((orig, name))
+    ground_truth.extend(junk_entries)
     return current_schema, ground_truth
 
 if __name__ == "__main__":
@@ -402,18 +394,18 @@ if __name__ == "__main__":
     
     final_schema, ground_truth = generate_legacy_pair(clean_schema, operators_list)
     
-print("FINAL SCHEMA:")
-for col in final_schema:
-    print(f"  {col.name} ({col.dtype})")
+    print("FINAL SCHEMA:")
+    for col in final_schema:
+        print(f"  {col.name} ({col.dtype})")
 
-print("\nSOURCE SCHEMA (original):", [c.name for c in clean_schema])
-print("TARGET SCHEMA (final):", [c.name for c in final_schema])
+    print("\nSOURCE SCHEMA (original):", [c.name for c in clean_schema])
+    print("TARGET SCHEMA (final):", [c.name for c in final_schema])
 
-print("\nGROUND TRUTH:")
-for orig, final in ground_truth:
-    print(f"  {orig} -> {final}")
+    print("\nGROUND TRUTH:")
+    for orig, final in ground_truth:
+        print(f"  {orig!r} -> {final!r}")   # repr makes case visible
 
-print("\nSAMPLE ROWS:")
-for i in range(5):
-    row = {col.name: col.value_generator() for col in final_schema}
-    print(f"  Row {i+1}: {row}")
+    print("\nSAMPLE ROWS:")
+    for i in range(5):
+        row = {col.name: col.value_generator() for col in final_schema}
+        print(f"  Row {i+1}: {row}")
