@@ -65,127 +65,69 @@ ABBREVIATIONS = {
 def apply_abbreviations(schema, original_to_current=None):
     new_schema = []
     mapping = {}
-    
     for col in schema:
         parts = col.name.split("_")
         new_parts = [ABBREVIATIONS.get(part, part) for part in parts]
         new_name = "_".join(new_parts).upper()
-        
-        new_col = Column(
-            name=new_name,
-            dtype=col.dtype,
-            value_generator=col.value_generator
-        )
-        
-        new_schema.append(new_col)
+        new_schema.append(Column(new_name, col.dtype, col.value_generator))
         mapping[col.name] = new_name
-    
     return new_schema, mapping
 
 def apply_strip_vowels(schema, original_to_current=None):
     new_schema = []
     mapping = {}
     vowels = "aeiou"
-    
     for col in schema:
         parts = col.name.split("_")
-        new_parts = []
-        for part in parts:
-            no_vowels = "".join(char for char in part if char.lower() not in vowels)
-            new_parts.append(no_vowels)
+        new_parts = ["".join(ch for ch in part if ch.lower() not in vowels) for part in parts]
         new_name = "_".join(new_parts).upper()
-        
-        new_col = Column(
-            name=new_name,
-            dtype=col.dtype,
-            value_generator=col.value_generator
-        )
-        
-        new_schema.append(new_col)
+        new_schema.append(Column(new_name, col.dtype, col.value_generator))
         mapping[col.name] = new_name
-    
     return new_schema, mapping
 
 def apply_table_prefix(schema, original_to_current=None, table_code="CUST"):
     new_schema = []
     mapping = {}
-    
     for col in schema:
         new_name = f"{table_code}_{col.name}".upper()
-        new_col = Column(
-            name=new_name,
-            dtype=col.dtype,
-            value_generator=col.value_generator
-        )
-        new_schema.append(new_col)
+        new_schema.append(Column(new_name, col.dtype, col.value_generator))
         mapping[col.name] = new_name
-    
     return new_schema, mapping
 
 def apply_date_format(schema, original_to_current=None):
     new_schema = []
     mapping = {}
-    
     for col in schema:
         if col.dtype == "datetime":
             old_gen = col.value_generator
-            
             def new_gen(old_gen=old_gen):
                 dt = old_gen()
                 return int(dt.strftime("%Y%m%d"))
-            
-            new_col = Column(
-                name=col.name,
-                dtype="int",
-                value_generator=new_gen
-            )
+            new_schema.append(Column(col.name, "int", new_gen))
         else:
-            new_col = Column(
-                name=col.name,
-                dtype=col.dtype,
-                value_generator=col.value_generator
-            )
-        
-        new_schema.append(new_col)
+            new_schema.append(Column(col.name, col.dtype, col.value_generator))
         mapping[col.name] = col.name
-    
     return new_schema, mapping
 
 def apply_split_field(schema, original_to_current=None):
     current_names = original_to_current.get("name", ["name"]) if original_to_current else ["name"]
     current_name = current_names[0]
-    
     new_schema = []
     mapping = {}
-    
     for col in schema:
         if col.name == current_name:
             name_gen = col.value_generator
-
             def name1_gen(gen=name_gen):
                 return gen().split()[0]
-
             def name2_gen(gen=name_gen):
                 parts = gen().split()
                 return parts[-1] if len(parts) > 1 else ""
-            
-            new_col1 = Column(
-                name="NAME1",
-                dtype="str",
-                value_generator=name1_gen
-            )
-            new_col2 = Column(
-                name="NAME2",
-                dtype="str",
-                value_generator=name2_gen
-            )
-            new_schema.append(new_col1)
-            new_schema.append(new_col2)
+            new_schema.append(Column("NAME1", "str", name1_gen))
+            new_schema.append(Column("NAME2", "str", name2_gen))
             mapping[col.name] = ["NAME1", "NAME2"]
         else:
-            new_schema.append(col)
+            new_schema.append(Column(col.name, col.dtype, col.value_generator))
             mapping[col.name] = col.name
-    
     return new_schema, mapping
 
 def apply_merge_fields(schema, original_to_current=None):
@@ -195,124 +137,76 @@ def apply_merge_fields(schema, original_to_current=None):
     else:
         addr1_current = "address_line_1"
         addr2_current = "address_line_2"
-    
     new_schema = []
     mapping = {}
     merged = set()
-    
     addr2 = next((c for c in schema if c.name == addr2_current), None)
-    
     for col in schema:
         if col.name in merged:
             continue
         if col.name == addr1_current and addr2:
             g1, g2 = col.value_generator, addr2.value_generator
-
             def merged_gen(g1=g1, g2=g2):
-                addr1 = g1()
-                addr2 = g2()
-                if addr2:
-                    return f"{addr1}, {addr2}"
-                return addr1
-
-            new_schema.append(Column(
-                "STRAS", "str",
-                merged_gen
-            ))
+                a1 = g1()
+                a2 = g2()
+                return f"{a1}, {a2}" if a2 else a1
+            new_schema.append(Column("STRAS", "str", merged_gen))
             mapping.update({addr1_current: "STRAS", addr2_current: "STRAS"})
             merged.update([col.name, addr2.name])
         else:
             new_schema.append(Column(col.name, col.dtype, col.value_generator))
             mapping[col.name] = col.name
-    
     return new_schema, mapping
 
 def apply_unit_change(schema, original_to_current=None):
+    # FIX: resolve current name for original "amount"
+    current_names = original_to_current.get("amount", ["amount"]) if original_to_current else ["amount"]
+    current_name = current_names[0]
     new_schema = []
     mapping = {}
-    
     for col in schema:
-        if col.name == "amount":
+        if col.name == current_name:
             old_gen = col.value_generator
-            
             def new_gen(old_gen=old_gen):
                 return int(old_gen() * 100)
-            
-            new_col = Column(
-                name=col.name,
-                dtype="int",
-                value_generator=new_gen
-            )
+            new_schema.append(Column(col.name, "int", new_gen))
         else:
-            new_col = Column(
-                name=col.name,
-                dtype=col.dtype,
-                value_generator=col.value_generator
-            )
-        
-        new_schema.append(new_col)
+            new_schema.append(Column(col.name, col.dtype, col.value_generator))
         mapping[col.name] = col.name
-    
     return new_schema, mapping
 
 def apply_case_flip(schema, original_to_current=None):
     new_schema = []
     mapping = {}
-    
     for col in schema:
         new_name = col.name.upper()
-        new_col = Column(
-            name=new_name,
-            dtype=col.dtype,
-            value_generator=col.value_generator
-        )
-        new_schema.append(new_col)
+        new_schema.append(Column(new_name, col.dtype, col.value_generator))
         mapping[col.name] = new_name
-    
+    return new_schema, mapping
+
+def apply_drop_column(schema, original_to_current=None):
+    # FIX: resolve current name for original "status"
+    current_names = original_to_current.get("status", ["status"]) if original_to_current else ["status"]
+    status_current = current_names[0] if current_names else None
+    new_schema = []
+    mapping = {}
+    for col in schema:
+        if col.name != status_current:   # drop it if it matches
+            new_schema.append(Column(col.name, col.dtype, col.value_generator))
+            mapping[col.name] = col.name
+        # else drop silently (no mapping)
     return new_schema, mapping
 
 def apply_add_junk(schema, original_to_current=None):
     new_schema = list(schema)
     mapping = {col.name: col.name for col in schema}
-
     junk_cols = [
-        Column(
-            name="LEGACY_FLAG",
-            dtype="int",
-            value_generator=lambda: random.randint(0, 1),
-        ),
-        Column(
-            name="INTERNAL_CODE",
-            dtype="str",
-            value_generator=lambda: random.choice(
-                ["A102", "B205", "C307", "X999"]
-            ),
-        ),
-        Column(
-            name="MIGRATION_BATCH",
-            dtype="str",
-            value_generator=lambda: random.choice(
-                ["batch_01", "batch_02", "batch_03"]
-            ),
-        ),
+        Column("LEGACY_FLAG", "int", lambda: random.randint(0, 1)),
+        Column("INTERNAL_CODE", "str", lambda: random.choice(["A102", "B205", "C307", "X999"])),
+        Column("MIGRATION_BATCH", "str", lambda: random.choice(["batch_01", "batch_02", "batch_03"])),
     ]
-
     new_schema.extend(junk_cols)
     mapping[None] = [col.name for col in junk_cols]
-
-    return new_schema, mapping
-
-def apply_drop_column(schema, original_to_current=None):
-    new_schema = []
-    mapping = {}
-    
-    cols_to_drop = ["status"]
-
-    for col in schema:
-        if col.name not in cols_to_drop:
-            new_schema.append(col)
-            mapping[col.name] = col.name
-
     return new_schema, mapping
 
 OPERATORS = {
@@ -324,19 +218,17 @@ OPERATORS = {
     "merge_fields": apply_merge_fields,
     "unit_change": apply_unit_change,
     "case_flip": apply_case_flip,
-    "add_junk": apply_add_junk,
     "drop_column": apply_drop_column,
+    "add_junk": apply_add_junk,
 }
 
 def generate_legacy_pair(schema, operators):
     current_schema = schema
     original_to_current = {col.name: [col.name] for col in schema}
     junk_entries = []
-
     for op_name in operators:
         func = OPERATORS[op_name]
         current_schema, step_mapping = func(current_schema, original_to_current)
-
         new_original_to_current = {}
         for orig, current_names in original_to_current.items():
             new_names = []
@@ -349,7 +241,6 @@ def generate_legacy_pair(schema, operators):
                         new_names.append(val)
             if new_names:
                 new_original_to_current[orig] = new_names
-
         if None in step_mapping:
             junk_names = step_mapping[None]
             if isinstance(junk_names, list):
@@ -357,9 +248,7 @@ def generate_legacy_pair(schema, operators):
                     junk_entries.append((None, name))
             else:
                 junk_entries.append((None, junk_names))
-
         original_to_current = new_original_to_current
-
     ground_truth = []
     for orig, names in original_to_current.items():
         for name in names:
@@ -369,34 +258,28 @@ def generate_legacy_pair(schema, operators):
 
 if __name__ == "__main__":
     clean_schema = base_schema()
-    
-    # Reordered: case_flip before split_field to prove the fix
     operators_list = [
-        "drop_column",
-        "case_flip",          # now before split_field
-        "split_field",
-        "merge_fields",
-        "unit_change",
+        "case_flip",          # renames all to uppercase first
+        "drop_column",        # now drops "STATUS"
+        "split_field",        # now splits "NAME"
+        "merge_fields",       # merges uppercase address fields
+        "unit_change",        # now finds "AMOUNT" and converts to int
         "date_format",
         "abbreviate",
         "strip_vowels",
         "table_prefix",
         "add_junk"
     ]
-    
     final_schema, ground_truth = generate_legacy_pair(clean_schema, operators_list)
     
     print("FINAL SCHEMA:")
     for col in final_schema:
         print(f"  {col.name} ({col.dtype})")
-
     print("\nSOURCE SCHEMA (original):", [c.name for c in clean_schema])
     print("TARGET SCHEMA (final):", [c.name for c in final_schema])
-
     print("\nGROUND TRUTH:")
     for orig, final in ground_truth:
         print(f"  {orig!r} -> {final!r}")
-
     print("\nSAMPLE ROWS:")
     for i in range(5):
         row = {col.name: col.value_generator() for col in final_schema}
