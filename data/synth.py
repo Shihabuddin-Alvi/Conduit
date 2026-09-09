@@ -281,6 +281,6 @@ if __name__ == "__main__":
     for orig, final in ground_truth:
         print(f"  {orig!r} -> {final!r}")
     print("\nSAMPLE ROWS:")
-    for i in range(10):
+    for i in range(15):
         row = {col.name: col.value_generator() for col in final_schema}
         print(f"  Row {i+1}: {row}")
