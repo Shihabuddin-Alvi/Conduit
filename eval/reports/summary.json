@@ -1,0 +1,26 @@
+{
+  "exact_match": {
+    "report": "/Users/alvimac/Documents/FDE Projects/conduit/eval/reports/exact_match.json",
+    "audit": "/Users/alvimac/Documents/FDE Projects/conduit/eval/reports/exact_match_junk_audit.json",
+    "n_dropped_source_mappings": 0,
+    "n_junk_target_mappings": 0
+  },
+  "normalized_match": {
+    "report": "/Users/alvimac/Documents/FDE Projects/conduit/eval/reports/normalized_match.json",
+    "audit": "/Users/alvimac/Documents/FDE Projects/conduit/eval/reports/normalized_match_junk_audit.json",
+    "n_dropped_source_mappings": 0,
+    "n_junk_target_mappings": 0
+  },
+  "jaccard_trigram_match": {
+    "report": "/Users/alvimac/Documents/FDE Projects/conduit/eval/reports/jaccard_trigram_match.json",
+    "audit": "/Users/alvimac/Documents/FDE Projects/conduit/eval/reports/jaccard_trigram_match_junk_audit.json",
+    "n_dropped_source_mappings": 5,
+    "n_junk_target_mappings": 0
+  },
+  "levenshtein_ratio_match": {
+    "report": "/Users/alvimac/Documents/FDE Projects/conduit/eval/reports/levenshtein_ratio_match.json",
+    "audit": "/Users/alvimac/Documents/FDE Projects/conduit/eval/reports/levenshtein_ratio_match_junk_audit.json",
+    "n_dropped_source_mappings": 5,
+    "n_junk_target_mappings": 11
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "baseline": "exact_match",
+  "dropped_source_columns": [
+    "status"
+  ],
+  "junk_target_columns": [
+    "INTERNAL_CODE",
+    "LEGACY_FLAG",
+    "MIGRATION_BATCH"
+  ],
+  "dropped_source_mappings": [],
+  "junk_target_mappings": [],
+  "n_dropped_source_mappings": 0,
+  "n_junk_target_mappings": 0,
+  "harness_f1": 0.0
+}

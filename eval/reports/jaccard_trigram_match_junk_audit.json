@@ -1,0 +1,42 @@
+{
+  "baseline": "jaccard_trigram_match",
+  "dropped_source_columns": [
+    "status"
+  ],
+  "junk_target_columns": [
+    "INTERNAL_CODE",
+    "LEGACY_FLAG",
+    "MIGRATION_BATCH"
+  ],
+  "dropped_source_mappings": [
+    [
+      "status",
+      "CUST_D",
+      0.0
+    ],
+    [
+      "status",
+      "CUST_NM1",
+      0.0
+    ],
+    [
+      "status",
+      "CUST_NM2",
+      0.0
+    ],
+    [
+      "status",
+      "CUST_ML",
+      0.0
+    ],
+    [
+      "status",
+      "CUST_STRS",
+      0.0
+    ]
+  ],
+  "junk_target_mappings": [],
+  "n_dropped_source_mappings": 5,
+  "n_junk_target_mappings": 0,
+  "harness_f1": 0.22222222222222224
+}

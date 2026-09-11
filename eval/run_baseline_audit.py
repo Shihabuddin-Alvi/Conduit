@@ -91,7 +91,12 @@ def main() -> None:
         f"mismatch: derived {junk_tgt} vs sentinel {sentinel_junk_tgt}"
     )
 
-    truth = real_pairs  # list, on purpose — keeps the name -> two-target case intact
+    # truth for the metric layer: src -> set of valid targets.
+# A set (not str) because split_field produces name -> {CUST_NM1, CUST_NM2}.
+    truth_by_src: dict[str, set[str]] = {}
+    for s, t in real_pairs:
+        truth_by_src.setdefault(s, set()).add(t)
+    truth = truth_by_src
 
     print("source columns  :", src_cols)
     print("target columns  :", tgt_cols)

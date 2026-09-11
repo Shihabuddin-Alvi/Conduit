@@ -3,15 +3,25 @@ from pathlib import Path
 
 
 def score_predictions(preds: dict, truth: dict, all_src_cols: list) -> dict:
+    """
+    truth: dict[src_col, set[valid_tgt_cols]].
+      A source column with an empty / missing set has no correct target.
+      A prediction is TP iff its top candidate is in the true set.
+      rank for MRR = position of the first candidate that is in the true set.
+
+    This is set-based (not str) because the synthetic pair generator emits
+    one-to-many ground truth (split_field: name -> {CUST_NM1, CUST_NM2}).
+    A dict[str, str] would silently drop all but one target per source.
+    """
     tp = fp = fn = tn = 0
     ranks = []
 
     for src_col in all_src_cols:
-        true_tgt = truth.get(src_col)
+        true_tgts = truth.get(src_col) or set()
         candidates_raw = preds.get(src_col, [])
         candidates = [c for c, _ in candidates_raw]
 
-        if true_tgt is None:
+        if not true_tgts:
             if candidates:
                 fp += 1
             else:
@@ -23,15 +33,16 @@ def score_predictions(preds: dict, truth: dict, all_src_cols: list) -> dict:
             ranks.append(None)
             continue
 
-        if candidates[0] == true_tgt:
+        if candidates[0] in true_tgts:
             tp += 1
         else:
             fn += 1
 
-        if true_tgt in candidates:
-            ranks.append(candidates.index(true_tgt) + 1)
-        else:
-            ranks.append(None)
+        rank = next(
+            (i + 1 for i, c in enumerate(candidates) if c in true_tgts),
+            None,
+        )
+        ranks.append(rank)
 
     return {"tp": tp, "fp": fp, "fn": fn, "tn": tn, "ranks": ranks}
 
@@ -61,6 +72,9 @@ def compute_rank_metrics(counts: dict) -> dict:
 
 
 def coverage_and_precision(preds: dict, truth: dict, all_src_cols: list, threshold: float) -> dict:
+    """
+    truth: dict[src_col, set[valid_tgt_cols]] (same shape as score_predictions).
+    """
     above_threshold = []
     correct_above = 0
 
@@ -72,7 +86,7 @@ def coverage_and_precision(preds: dict, truth: dict, all_src_cols: list, thresho
         top_col, top_score = candidates_raw[0]
         if top_score >= threshold:
             above_threshold.append(src_col)
-            if truth.get(src_col) == top_col:
+            if top_col in (truth.get(src_col) or set()):
                 correct_above += 1
 
     coverage = len(above_threshold) / len(all_src_cols) if all_src_cols else 0.0
@@ -101,30 +115,34 @@ def run_eval(matcher_fn, dataset_iter, name: str, all_src_cols: list) -> dict:
     for src, tgt, truth, meta in dataset_iter:
         preds = matcher_fn(src, tgt)
         rows.append(score_predictions(preds, truth, all_src_cols))
-    
+
     report = aggregate(rows)
-    
-    # Write report
+
     report_path = Path(f"eval/reports/{name}.json")
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with open(report_path, "w") as f:
         json.dump(report, f, indent=2)
-    
+
     return report
 
 
 if __name__ == "__main__":
     all_cols = ["a", "b", "c", "d"]
-    truth = {"a": "x", "b": "y", "c": "z"}
+    # Sets, not strings. Matches the shape score_predictions now expects.
+    truth = {"a": {"x"}, "b": {"y"}, "c": {"z"}}
 
     all_correct = {"a": [("x", 0.9)], "b": [("y", 0.9)], "c": [("z", 0.9)]}
     all_abstain = {"a": [], "b": [], "c": []}
-    ranked_preds = {"a": [("q", 0.9), ("x", 0.5)], "b": [("y", 0.9)], "c": [("z", 0.9), ("w", 0.5), ("v", 0.3), ("q", 0.1)]}
+    ranked_preds = {
+        "a": [("q", 0.9), ("x", 0.5)],
+        "b": [("y", 0.9)],
+        "c": [("z", 0.9), ("w", 0.5), ("v", 0.3), ("q", 0.1)],
+    }
 
     print(score_predictions(all_correct, truth, all_cols))
     print(compute_metrics(score_predictions(all_correct, truth, all_cols)))
     print(compute_rank_metrics(score_predictions(all_correct, truth, all_cols)))
-    
+
     print(score_predictions(all_abstain, truth, all_cols))
     print(compute_metrics(score_predictions(all_abstain, truth, all_cols)))
     print(compute_rank_metrics(score_predictions(all_abstain, truth, all_cols)))

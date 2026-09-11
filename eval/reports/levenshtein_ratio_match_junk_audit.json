@@ -1,0 +1,98 @@
+{
+  "baseline": "levenshtein_ratio_match",
+  "dropped_source_columns": [
+    "status"
+  ],
+  "junk_target_columns": [
+    "INTERNAL_CODE",
+    "LEGACY_FLAG",
+    "MIGRATION_BATCH"
+  ],
+  "dropped_source_mappings": [
+    [
+      "status",
+      "CUST_STRS",
+      0.5333333333333333
+    ],
+    [
+      "status",
+      "CUST_MNT",
+      0.42857142857142855
+    ],
+    [
+      "status",
+      "CUST_CRTD_T",
+      0.35294117647058826
+    ],
+    [
+      "status",
+      "CUST_D",
+      0.3333333333333333
+    ],
+    [
+      "status",
+      "CUST_ML",
+      0.3076923076923077
+    ]
+  ],
+  "junk_target_mappings": [
+    [
+      "id",
+      "INTERNAL_CODE",
+      0.26666666666666666
+    ],
+    [
+      "id",
+      "MIGRATION_BATCH",
+      0.11764705882352941
+    ],
+    [
+      "name",
+      "INTERNAL_CODE",
+      0.35294117647058826
+    ],
+    [
+      "name",
+      "MIGRATION_BATCH",
+      0.21052631578947367
+    ],
+    [
+      "email",
+      "LEGACY_FLAG",
+      0.375
+    ],
+    [
+      "email",
+      "INTERNAL_CODE",
+      0.3333333333333333
+    ],
+    [
+      "email",
+      "MIGRATION_BATCH",
+      0.3
+    ],
+    [
+      "address_line_1",
+      "INTERNAL_CODE",
+      0.2962962962962963
+    ],
+    [
+      "address_line_2",
+      "INTERNAL_CODE",
+      0.2962962962962963
+    ],
+    [
+      "created_at",
+      "MIGRATION_BATCH",
+      0.48
+    ],
+    [
+      "amount",
+      "MIGRATION_BATCH",
+      0.38095238095238093
+    ]
+  ],
+  "n_dropped_source_mappings": 5,
+  "n_junk_target_mappings": 11,
+  "harness_f1": 0.4
+}
