@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def exact_match(src: pd.DataFrame, tgt: pd.DataFrame) -> dict[str, list[tuple[str, float]]]:
     """
     Exact string match on column names.
@@ -8,12 +9,13 @@ def exact_match(src: pd.DataFrame, tgt: pd.DataFrame) -> dict[str, list[tuple[st
     src_cols = list(src.columns)
     tgt_cols = list(tgt.columns)
     tgt_set = set(tgt_cols)
-    
+
     result = {}
     for src_col in src_cols:
         if src_col in tgt_set:
             result[src_col] = [(src_col, 1.0)]
     return result
+
 
 def normalized_match(src: pd.DataFrame, tgt: pd.DataFrame) -> dict[str, list[tuple[str, float]]]:
     """
@@ -23,10 +25,10 @@ def normalized_match(src: pd.DataFrame, tgt: pd.DataFrame) -> dict[str, list[tup
     """
     def normalize(name: str) -> str:
         return name.lower().replace("_", "")
-    
+
     src_cols = list(src.columns)
     tgt_cols = list(tgt.columns)
-    
+
     # Build lookup: normalized_target_name -> original_target_name
     # Note: If multiple target columns normalize to the same string, only the first
     # encountered is kept; later collisions are dropped. This is intentional for
@@ -36,14 +38,15 @@ def normalized_match(src: pd.DataFrame, tgt: pd.DataFrame) -> dict[str, list[tup
         norm = normalize(tgt_col)
         if norm not in tgt_lookup:
             tgt_lookup[norm] = tgt_col
-    
+
     result = {}
     for src_col in src_cols:
         norm = normalize(src_col)
         if norm in tgt_lookup:
             result[src_col] = [(tgt_lookup[norm], 1.0)]
-    
+
     return result
+
 
 def jaccard_trigram_match(src: pd.DataFrame, tgt: pd.DataFrame, top_k: int = 5) -> dict[str, list[tuple[str, float]]]:
     """
@@ -55,21 +58,21 @@ def jaccard_trigram_match(src: pd.DataFrame, tgt: pd.DataFrame, top_k: int = 5) 
         if len(s) < 3:
             return set()
         return {s[i:i+3] for i in range(len(s) - 2)}
-    
+
     src_cols = list(src.columns)
     tgt_cols = list(tgt.columns)
-    
+
     # Precompute trigrams for all target columns
     tgt_trigrams = {col: get_trigrams(col) for col in tgt_cols}
-    
+
     result = {}
     for src_col in src_cols:
         src_tri = get_trigrams(src_col)
         scores = []
-        
+
         for tgt_col in tgt_cols:
             tgt_tri = tgt_trigrams[tgt_col]
-            
+
             # Jaccard: intersection / union
             if not src_tri and not tgt_tri:
                 score = 0.0
@@ -79,25 +82,26 @@ def jaccard_trigram_match(src: pd.DataFrame, tgt: pd.DataFrame, top_k: int = 5) 
                 inter = len(src_tri & tgt_tri)
                 union = len(src_tri | tgt_tri)
                 score = inter / union if union > 0 else 0.0
-            
+
             scores.append((tgt_col, score))
-        
+
         # Sort descending by score
         scores.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Keep top-k (or all if fewer)
         result[src_col] = scores[:top_k]
-    
+
     return result
+
 
 def levenshtein_ratio_match(src: pd.DataFrame, tgt: pd.DataFrame, top_k: int = 5) -> dict[str, list[tuple[str, float]]]:
     """
     String similarity using difflib.SequenceMatcher.ratio().
-    
+
     NOTE: This is Ratcliff-Obershelp similarity (gestalt pattern matching),
     NOT true Levenshtein edit distance. It approximates similarity but differs
     from true edit distance in how it finds matching substrings.
-    
+
     Uses lowercase strings for case-insensitive matching.
     Returns top-k target columns sorted descending by score for each source column.
     Like Jaccard, this baseline never abstains — every source column gets top_k
@@ -105,10 +109,10 @@ def levenshtein_ratio_match(src: pd.DataFrame, tgt: pd.DataFrame, top_k: int = 5
     "no signal".
     """
     from difflib import SequenceMatcher
-    
+
     src_cols = list(src.columns)
     tgt_cols = list(tgt.columns)
-    
+
     result = {}
     for src_col in src_cols:
         scores = []
@@ -116,8 +120,32 @@ def levenshtein_ratio_match(src: pd.DataFrame, tgt: pd.DataFrame, top_k: int = 5
         for tgt_col in tgt_cols:
             ratio = SequenceMatcher(None, src_lower, tgt_col.lower()).ratio()
             scores.append((tgt_col, ratio))
-        
+
         scores.sort(key=lambda x: x[1], reverse=True)
         result[src_col] = scores[:top_k]
-    
+
     return result
+
+
+def cupid_match(src: pd.DataFrame, tgt: pd.DataFrame) -> dict[str, list[tuple[str, float]]]:
+    """
+    Valentine Cupid matcher adapter.
+
+    valentine_match returns a flat MatcherResults keyed by
+    ((df1_name, src_col), (df2_name, tgt_col)) -> float score.
+    This adapter groups candidates by source column and sorts each
+    source's list descending by score, matching the shape
+    eval.metrics.score_predictions expects.
+    """
+    from valentine import valentine_match
+    from valentine.algorithms import Cupid
+
+    result = valentine_match(src, tgt, Cupid(),
+                             df1_name="source", df2_name="target")
+    grouped: dict[str, list[tuple[str, float]]] = {}
+    for key, score in result.items():
+        (df1_key, src_col), (df2_key, tgt_col) = key
+        grouped.setdefault(src_col, []).append((tgt_col, float(score)))
+    for src_col in grouped:
+        grouped[src_col].sort(key=lambda ts: ts[1], reverse=True)
+    return grouped
