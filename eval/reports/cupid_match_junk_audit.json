@@ -1,0 +1,18 @@
+{
+  "baseline": "cupid_match",
+  "dataset": "TPC-DI",
+  "scenario": "Unionable",
+  "noise_level": "ev",
+  "n_pairs": 1,
+  "dropped_source_columns": [],
+  "junk_target_columns": [],
+  "dropped_source_mappings": [],
+  "junk_target_mappings": [],
+  "n_dropped_source_mappings": 0,
+  "n_junk_target_mappings": 0,
+  "harness_f1": 0.16666666666666669,
+  "notes": [
+    "Cupid applies an internal acceptance threshold (th_accept, default 0.7) and returns only pairs that clear it, not a ranked shortlist per source. Expect many zero-candidate source columns on real pairs. MRR and recall_at_3 are structurally thin for this matcher; low values reflect the wrapped algorithm, not the harness.",
+    "This TPC-DI/Unionable/ev pair has all 22 source and all 22 target columns covered by ground truth, so dropped_src and junk_tgt are both empty. 0/0 here means 'no junk columns to intrude on', not 'Cupid is clean'."
+  ]
+}
