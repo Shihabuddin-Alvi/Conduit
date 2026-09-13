@@ -21,6 +21,7 @@ def list_pairs(
         pairs = [p for p in pairs if p.name.endswith(f"_{noise_level}")]
     return pairs
 
+
 def load_pair(pair_dir: Path) -> tuple:
     pair_name = pair_dir.name
     source_path = pair_dir / f"{pair_name}_source.csv"
@@ -37,6 +38,7 @@ def load_pair(pair_dir: Path) -> tuple:
     ]
 
     return source_df, target_df, ground_truth_pairs
+
 
 def load_dataset(
     dataset: str,
@@ -56,6 +58,7 @@ def load_dataset(
 
         yield source_df, target_df, ground_truth_pairs, metadata
 
+
 def get_dataset_iter(
     dataset: str,
     scenario: str,
@@ -64,10 +67,13 @@ def get_dataset_iter(
     for source_df, target_df, ground_truth_pairs, metadata in load_dataset(
         dataset, scenario, noise_level
     ):
-        truth = {src: tgt for src, tgt in ground_truth_pairs}
+        truth = {}
+        for src, tgt in ground_truth_pairs:
+            truth.setdefault(src, set()).add(tgt)
         all_src_cols = list(source_df.columns)
 
         yield source_df, target_df, truth, all_src_cols
+
 
 if __name__ == "__main__":
     all_pairs = list_pairs("TPC-DI", "Unionable")
