@@ -149,3 +149,33 @@ def cupid_match(src: pd.DataFrame, tgt: pd.DataFrame) -> dict[str, list[tuple[st
     for src_col in grouped:
         grouped[src_col].sort(key=lambda ts: ts[1], reverse=True)
     return grouped
+
+def similarity_flooding_match(src: pd.DataFrame, tgt: pd.DataFrame) -> dict[str, list[tuple[str, float]]]:
+    """
+    Valentine SimilarityFlooding matcher adapter.
+
+    Same adapter shape as cupid_match: valentine_match returns a flat
+    MatcherResults keyed by ((df1_name, src_col), (df2_name, tgt_col))
+    -> float score. This groups candidates by source column and sorts
+    each source's list descending by score, matching the shape
+    eval.metrics.score_predictions expects.
+
+    NOTE: SimilarityFlooding's abstention / threshold behavior is not
+    assumed here. Unlike Cupid (which we verified applies th_accept=0.7),
+    we do not yet know whether this matcher returns a filtered set or a
+    ranked shortlist per source. The first real run on the TPC-DI pair
+    is what establishes that; do not read anything into the candidate
+    counts until it is on disk.
+    """
+    from valentine import valentine_match
+    from valentine.algorithms import SimilarityFlooding
+
+    result = valentine_match(src, tgt, SimilarityFlooding(),
+                             df1_name="source", df2_name="target")
+    grouped: dict[str, list[tuple[str, float]]] = {}
+    for key, score in result.items():
+        (df1_key, src_col), (df2_key, tgt_col) = key
+        grouped.setdefault(src_col, []).append((tgt_col, float(score)))
+    for src_col in grouped:
+        grouped[src_col].sort(key=lambda ts: ts[1], reverse=True)
+    return grouped
