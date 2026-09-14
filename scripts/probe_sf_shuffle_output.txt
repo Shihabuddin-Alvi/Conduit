@@ -1,0 +1,35 @@
+original target order: ['gncd', 'lstnm', 'frstnm', 'mddlntl', 'gndr', 'ddrssln1', 'ddrssln2', 'pstlcd', 'ct', 'stt', 'cntr', 'phn', 'ncm', 'nmbrcrs', 'nmbrchldrn', 'mrtlstts', 'g', 'crdtrtng', 'wnrrntflg', 'mplr', 'nmbrcrdtcrds', 'ntwrth']
+
+=== ORIGINAL ORDER ===
+tp/fp/fn: 22 0 0
+ranks: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+=== SHUFFLE seed=42 ===
+shuffled target order: ['ntwrth', 'ddrssln1', 'frstnm', 'mrtlstts', 'stt', 'ncm', 'g', 'mplr', 'ddrssln2', 'nmbrcrs', 'wnrrntflg', 'nmbrchldrn', 'cntr', 'lstnm', 'phn', 'gndr', 'crdtrtng', 'pstlcd', 'ct', 'gncd', 'mddlntl', 'nmbrcrdtcrds']
+tp/fp/fn: 20 0 2
+ranks: [1, 2, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  LOST top-1: LastName | truth={'lstnm'}
+              orig top-1: ('lstnm', 0.07095919324395424)
+              shuf top-1: ('frstnm', 0.07095919324395418)
+  LOST top-1: City | truth={'ct'}
+              orig top-1: ('ct', 0.061720216735845865)
+              shuf top-1: ('stt', 0.06172021673584582)
+  full shuf candidates for LastName: [('frstnm', 0.07095919324395418), ('lstnm', 0.07095919324395418), ('stt', 0.06172021673584582), ('pstlcd', 0.06172021673584582), ('cntr', 0.05248124022773745), ('ct', 0.05248124022773745), ('ntwrth', 0.05194703461071705), ('ncm', 0.05194703461071705), ('crdtrtng', 0.05194703461071705), ('nmbrcrdtcrds', 0.04886737577468092), ('ddrssln1', 0.04324226371962908), ('mrtlstts', 0.04324226371962908), ('mplr', 0.04324226371962908), ('ddrssln2', 0.04324226371962908), ('wnrrntflg', 0.04324226371962908), ('phn', 0.04324226371962908), ('gndr', 0.04324226371962908), ('gncd', 0.04324226371962908), ('mddlntl', 0.04324226371962908), ('g', 0.04270805810260867), ('nmbrcrs', 0.04270805810260867), ('nmbrchldrn', 0.04270805810260867)]
+
+=== SHUFFLE seed=7 ===
+shuffled target order: ['ddrssln1', 'crdtrtng', 'nmbrcrdtcrds', 'mrtlstts', 'pstlcd', 'nmbrchldrn', 'ntwrth', 'mplr', 'ddrssln2', 'wnrrntflg', 'nmbrcrs', 'g', 'ct', 'gncd', 'stt', 'phn', 'mddlntl', 'frstnm', 'lstnm', 'ncm', 'gndr', 'cntr']
+tp/fp/fn: 21 0 1
+ranks: [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  LOST top-1: LastName | truth={'lstnm'}
+              orig top-1: ('lstnm', 0.07095919324395424)
+              shuf top-1: ('frstnm', 0.07095919324395424)
+  full shuf candidates for LastName: [('frstnm', 0.07095919324395424), ('lstnm', 0.07095919324395424), ('pstlcd', 0.06172021673584587), ('stt', 0.06172021673584587), ('ct', 0.052481240227737494), ('cntr', 0.052481240227737494), ('crdtrtng', 0.05194703461071709), ('ntwrth', 0.05194703461071709), ('ncm', 0.05194703461071709), ('nmbrcrdtcrds', 0.048867375774680956), ('ddrssln1', 0.043242263719629116), ('mrtlstts', 0.043242263719629116), ('mplr', 0.043242263719629116), ('ddrssln2', 0.043242263719629116), ('wnrrntflg', 0.043242263719629116), ('gncd', 0.043242263719629116), ('phn', 0.043242263719629116), ('mddlntl', 0.043242263719629116), ('gndr', 0.043242263719629116), ('nmbrchldrn', 0.042708058102608706), ('nmbrcrs', 0.042708058102608706), ('g', 0.042708058102608706)]
+
+=== SHUFFLE seed=13 ===
+shuffled target order: ['g', 'phn', 'nmbrcrs', 'nmbrcrdtcrds', 'cntr', 'mrtlstts', 'ncm', 'nmbrchldrn', 'ddrssln2', 'gncd', 'crdtrtng', 'mddlntl', 'ntwrth', 'lstnm', 'frstnm', 'mplr', 'wnrrntflg', 'gndr', 'pstlcd', 'ddrssln1', 'stt', 'ct']
+tp/fp/fn: 21 0 1
+ranks: [1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  LOST top-1: City | truth={'ct'}
+              orig top-1: ('ct', 0.061720216735845865)
+              shuf top-1: ('cntr', 0.06172021673584588)
+  full shuf candidates for City: [('cntr', 0.06172021673584588), ('stt', 0.06172021673584588), ('ct', 0.06172021673584588), ('lstnm', 0.05802462613260252), ('frstnm', 0.05556089906377362), ('pstlcd', 0.05556089906377362), ('ntwrth', 0.05502669344675321), ('mddlntl', 0.053801094014610126), ('mrtlstts', 0.0524812402277375), ('crdtrtng', 0.0519470346107171), ('wnrrntflg', 0.05145468728239212), ('nmbrcrdtcrds', 0.04886737577468096), ('phn', 0.04324226371962912), ('ddrssln2', 0.04324226371962912), ('gncd', 0.04324226371962912), ('mplr', 0.04324226371962912), ('gndr', 0.04324226371962912), ('ddrssln1', 0.04324226371962912), ('g', 0.042708058102608706), ('nmbrcrs', 0.042708058102608706), ('ncm', 0.042708058102608706), ('nmbrchldrn', 0.042708058102608706)]
