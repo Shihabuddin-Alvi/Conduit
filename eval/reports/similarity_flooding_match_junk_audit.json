@@ -1,0 +1,20 @@
+{
+  "baseline": "similarity_flooding_match",
+  "dataset": "TPC-DI",
+  "scenario": "Unionable",
+  "noise_level": "ev",
+  "n_pairs": 1,
+  "dropped_source_columns": [],
+  "junk_target_columns": [],
+  "dropped_source_mappings": [],
+  "junk_target_mappings": [],
+  "n_dropped_source_mappings": 0,
+  "n_junk_target_mappings": 0,
+  "harness_f1": 1.0,
+  "notes": [
+    "Verified on a toy 3-column pair: output is a dict grouped by source, targets are str, scores are float in [0,1], each source's list is sorted descending, and the top candidate was correct in all three rows. Real-pair run confirms the candidate profile: 22 candidates per source for all 22 source columns, a full ranked shortlist of every target column for every source, no abstention and no truncation. This differs from Cupid, which returned 1 candidate per matched source post-threshold.",
+    "This TPC-DI/Unionable/ev pair has all 22 source and all 22 target columns covered by ground truth, so dropped_src and junk_tgt are both empty. 0/0 here means 'no junk columns to intrude on', not that the matcher is clean.",
+    "tp holds at 20 to 22 of 22 across three column-order shuffles (seeds 42, 7, 13), so the result is not primarily a position artifact. But candidate scores show near-ties at float64 precision between the correct target and semantically adjacent wrong ones. Two distinct patterns appear in the printed candidate lists. (1) Exact float ties: LastName's candidate list contains nine targets (ddrssln1, mrtlstts, mplr, ddrssln2, wnrrntflg, phn, gndr, gncd, mddlntl) all scoring the identical float64 value 0.04324226371962908, and City's list contains cntr, stt, and ct at an identical score. Nine or three distinct candidates returning bit-identical scores is direct evidence that structural propagation contributes no separation on this flat, hierarchy-free schema, not an inference from documentation. (2) 1-ULP near-ties: LastName's true target lstnm (0.07095919324395424) differs from the wrong target frstnm (0.07095919324395418) in the final representable digit; City's ct (0.061720216735845865) versus stt (0.06172021673584582) similarly differ by roughly one ULP. The original ordering's tp=22/fp=0 reflects tie-breaking and floating-point accumulation order that happened to favor ground truth, not a confident, well-separated match. Under reordering, the same near-ties flip and produce 1 to 2 misses, always on semantically adjacent column pairs (LastName/FirstName abbreviations, City/State/Country abbreviations).",
+    "Follow-up, not implemented here: a deterministic tie-break in the adapter (e.g. alphabetical on target name) would make top-1 stable across column order but would not add real separation; the two sources would then fail deterministically instead of intermittently. Session 13's margin-as-signal work is the intended long-term response; the adapter tie-break is not."
+  ]
+}
